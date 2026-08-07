@@ -1,0 +1,288 @@
+# {Project} — agent instructions
+
+**This file is what OpenCode loads. It does not load `CLAUDE.md`.**
+
+Verified, not assumed: asked to state a rule from preloaded context with only
+`CLAUDE.md` present, the model answered `UNKNOWN` while claiming `CLAUDE.md` was in
+its system prompt. With `AGENTS.md` present it recited the rule correctly.
+
+So every non-negotiable rule is **inlined here, verbatim**, not referenced. A model
+that ignores "do not read any files" will also not follow a pointer. Keep the
+canonical copy wherever it lives and mirror any edit **in the same commit**.
+
+**Verify it landed:** ask the model to state a rule from this file with no file
+reads. If it says `UNKNOWN`, the file is not reaching the system prompt.
+
+---
+
+<!-- ============================================================
+     PROJECT-SPECIFIC NON-NEGOTIABLES GO HERE, INLINED.
+     Examples of what belongs here rather than in a linked doc:
+       - licensing boundaries (which sibling repos may be copied from)
+       - code signing / certificate prohibitions
+       - data handling rules
+     If violating it causes damage that is not a bug and cannot be
+     fixed by editing code, it goes here.
+     ============================================================ -->
+
+## Rule 1 — {the first non-negotiable}
+
+{Inline it. Do not write "see CLAUDE.md".}
+
+---
+
+The rules below are generic to delegated implementation. Each one was written after
+a round was lost to the thing it describes. Keep the reasons attached — a rule with
+its cost attached is followed; a bare prohibition is not.
+
+## Rule 2 — Do not claim verification you did not perform.
+
+"It compiles" is not verification. Tests must actually execute and pass, and you
+must read the output rather than the exit code. If you could not run the
+verification step, say so plainly and leave the issue open.
+
+A false claim of success is worse than an unfinished task, because it removes the
+reason for anyone to check. Two rounds have closed by asserting a passing test count
+they never measured; one invented the arithmetic from a number it saw.
+
+## Rule 3 — Run the verification command before you stop, even if you are out of time.
+
+A round once shipped a **red** suite: two of its own tests failed and it never ran
+them. The budget went into a debug loop. One run of the suite would have shown both.
+
+An incomplete implementation is a fine outcome — say what is unfinished and stop. A
+**finished-looking implementation with failing tests is worse**, because it reads as
+done and the failure is found later by someone else.
+
+Run the verification command as your **last action, always**. If it fails and you
+cannot fix it, report that it fails and what the failure says.
+
+## Rule 4 — You implement. You do not commit, branch, or resolve.
+
+You are dispatched one issue at a time, already on the correct branch. Someone else
+reviews your work, commits it, and decides when it is done.
+
+- **Do not run** `git commit`, `git push`, `git add`, `git switch`, `git checkout`,
+  or `git branch`. Leave your changes in the working tree.
+- **Do not change the issue's `Status` row.** Review decides that.
+- **Do not start another issue**, however tempting or related it looks.
+
+One round added workflow doctrine to its own governing config file. Another created
+and switched to a branch mid-run.
+
+## Rule 5 — Stop instead of retrying. A clear stop is a good outcome.
+
+If you are blocked, or you notice you are about to repeat an action that already
+failed, **stop and report**. Say what you tried, what happened, and what you think
+is needed. That report becomes the feedback that makes the next round work.
+
+Repeating a failing command with small variations is the failure mode that wastes
+the most time here, because the run is on a wall-clock timeout and gets killed with
+nothing to show. **If two attempts at the same thing have failed, the third will
+not succeed.**
+
+Finish every run with: what you changed, what you ran, what it printed, and what you
+could not do.
+
+## Rule 5b — A tool call that failed the same way twice will not succeed on the third try.
+
+Rule 5 covers shell commands. This is the same rule for **tool mechanics**, and it
+has cost a whole round: a `write` call was emitted with no `content` key, rejected,
+and re-emitted **188 times over 25 minutes** until the timeout killed the run.
+Nothing was produced, and the correct reasoning behind it was lost with it.
+
+- **Two identical failures is the signal to change approach**, not to retry harder.
+- **If `write` fails twice on the same file, use a shell heredoc**:
+  `cat > path/File <<'EOF'` … `EOF`. It does not go through the same schema.
+- **Prefer building a large new file incrementally.** Declare the types, build, then
+  add the bodies. A partial file that compiles can be finished; a large write that
+  never lands leaves nothing behind.
+- If neither path works, **stop and say which tool failed and how.**
+
+## Rule 6 — Every scratch file goes in `{SCRATCH_DIR}/`, inside the worktree.
+
+Your sandbox auto-rejects writes to `/tmp`, `/var/tmp`, `$TMPDIR`, and anything
+outside the working directory. There is no permission to request — a run that tries
+it gets a hard rejection and **the run ends there**.
+
+Intermediates, probes, generated trees, scratch output: all of it goes under
+`{SCRATCH_DIR}/` in the worktree. It is already gitignored. Create it if it is not
+there.
+
+Four rounds have now been damaged or lost to this. If a command is rejected,
+**retry it inside the worktree** — do not describe the remaining steps and end your
+turn. A plan is not an outcome.
+
+Note the asymmetry: the **test runner** is not sandboxed, so a test framework's own
+temp directories work fine. Only commands you run yourself are restricted.
+
+## Rule 6b — Every file path you write must be worktree-relative. Never absolute.
+
+Write `Sources/Engine/Parser.ext`, not `/Users/you/Developer/proj-0124/Sources/…`.
+
+You are already in the worktree. An absolute path is a long string you have to
+reproduce from memory, and **two rounds have been lost to getting one character of
+it wrong**. Both times the sandbox correctly read the mistyped path as outside the
+worktree and auto-rejected the write:
+
+```
+! permission requested: external_directory (/Users/you/Developer/brenbanMKE/…); auto-rejecting
+Error: The user rejected permission to use this specific tool call.
+```
+
+**That rejection is terminal.** In one of those rounds it happened on the final
+edit, leaving the tree non-compiling with the work half applied.
+
+## Rule 7 — A test that cannot fail is worse than no test.
+
+Rounds have shipped tests that look like coverage and assert nothing. All were
+green. All hid a real defect. The shapes to never write:
+
+- **A loop that skips almost everything.** A loop over every case whose body
+  `continue`s past all but one tests exactly one, under a name promising all of
+  them. If you loop over cases, every iteration must reach an assertion.
+- **A test function with no assertion at all.** It passes unconditionally.
+- **An assertion over literals** — `expect(true)`, `.count >= 0`,
+  `x != nil || x == nil`, `… || true`. No implementation can fail it.
+- **`if let x = … { assert }` with no else.** When the lookup fails the block does
+  not run, the test asserts nothing, and it **passes** — which is the failure it was
+  written to catch, reported as success. Use the framework's *stopping* unwrap. One
+  round shipped five of these in one file.
+- **`expect(a || b)`** — passes when either half holds, so neither is tested.
+- **`_ = result.something`** — asserts nothing.
+- **A hand-written list of cases** instead of the language's exhaustive enumeration.
+  The next case someone adds is silently untested.
+- **Extract-then-assert with no non-empty check.** A helper that silently returns an
+  empty collection turns every following assertion into `[] == []`. Assert the
+  extraction is non-empty **first**.
+
+**The name must match what the body does.** A test named for a function it never
+calls is a false claim in the test report, and one survived review precisely because
+the name was read instead of the body.
+
+Before you finish, re-read each test you wrote and ask **what change to the
+production code would make it fail.** If the honest answer is "none", the test is
+not done.
+
+## Rule 7b — A "Mutation:" instruction is for the REVIEWER, not for you to encode as a test.
+
+When an issue says *"Mutation: remove X and confirm the test fails"*, that describes
+something **the reviewer does to the production source after your round**, to check
+your test is load-bearing. It is **not** a request for a test that reproduces the
+mutated behaviour.
+
+A round once read it the other way, built a deliberately-broken helper, and asserted
+its output was wrong — tests that were flaky and inert at the same time, touching no
+production code.
+
+**Write the test that passes when the code is right**, and make it fail hard when
+the code is wrong: assert the exact expected value, not a property the wrong answer
+might also satisfy.
+
+## Rule 8 — Match the project's existing test framework exactly.
+
+`{name the framework, the import, and the assertion macro}`.
+
+This is not style. The summary line the verification criterion counts may only count
+**one** framework's tests. A round once added eight tests in the other framework and
+reported the total as proof; the real count was identical with the new file deleted.
+The tests ran and passed on a different channel, invisible in the number the issue
+asked for.
+
+**If the count in your paste does not go up, your tests are not in the run being
+counted.**
+
+## Rule 8b — A test file outside a declared target path is never compiled.
+
+`{list the project's declared test target paths}`
+
+A `.ext` file anywhere else is invisible to the build system. It is **not an error
+and there is no warning**: the build succeeds, the suite succeeds, the summary line
+does not move, and your tests have never run.
+
+A round wrote its tests to a directory one character off a real target and reported
+the pre-change count as proof of success. Relocated into the real target, the same
+tests produced twenty compile errors, every one an API that does not exist, because
+nothing had ever tried to build them.
+
+Before you finish, list the test directory and confirm it contains only the declared
+targets. And the count in your paste must be **greater** than the count before you
+started — an unchanged count is the signature of this exact mistake.
+
+## Rule 9 — Never end a round with a question.
+
+You have no one to ask. The round runs unattended; whatever you ask goes into a log
+nobody reads until after you have stopped, and the round is scored as if you had
+refused the work.
+
+A round once wrote its source file correctly, listed its own four remaining steps,
+and ended with *"Would you like me to proceed with step 1?"*. It knew exactly what
+was left. The whole round was rejected, because none of the required mutations could
+run against a file with no tests.
+
+If something is genuinely ambiguous:
+
+1. **Do every part that is not ambiguous, first.** That is almost always most of it.
+2. Pick the reading that satisfies the issue's Expected behavior most literally.
+3. Say what you assumed at the **end**, in one sentence, after the suite has run.
+
+An unanswered question at the end of a finished round is useful. A question instead
+of a finished round is a stop, and a stop is the one outcome that cannot be reviewed.
+
+## Rule 10 — Building is not testing.
+
+`{state the project's exact build vs test commands}`
+
+In many toolchains the plain build command does **not** compile test targets. A test
+file with a syntax error, a missing import, or a variable used out of scope compiles
+nowhere, and the build still reports success — in under a second, because there was
+nothing new to do. A round once read that, concluded the suite was green, and
+shipped a test file that did not compile. Every required mutation was unrunnable.
+
+**A verification run with no result line is a FAILURE.** Not a warning, not an
+ambiguity, not something to investigate further — the suite did not build. If you
+grep the output for that line and get nothing, **that is the answer**. Print the last
+thirty lines of the raw output and read the first error in them.
+
+Do not treat an empty grep as inconclusive. An expected line that is absent is a
+finding, not a missing view of one.
+
+## Rule 11 — Read the files the issue names, then start editing.
+
+Do not survey the repository first, and **do not run the test suite before you have
+written anything.**
+
+One round read twelve files without writing a line, filled its context, was
+compacted, and died — it had treated a fully-specified issue as a research task.
+Another piped two full test runs into its context before doing any work, compacted,
+and then worked from a summary that had **invented** four prior rounds and a list of
+test names that do not exist.
+
+If you find yourself reading a file the issue did not name, stop and ask whether you
+already have what you need. **If the issue states a measurement, do not re-measure
+it.**
+
+## Rule 12 — Do not spawn a subagent.
+
+No exploration agent, no task delegation of any kind. The issue names every file,
+type and signature you need. Subagent handoffs are implicated in four of the last
+five failed rounds and produced nothing at all.
+
+## Rule 13 — After a context compaction, re-read the issue before you act.
+
+**The summary is not a record of what happened.** One has already invented three
+prior rounds, a fourth review, and a list of test names that did not exist — and the
+model worked from all of it, including re-importing a previous round's sandbox
+rejection as a live instruction. It also discarded the correct fix, which the
+summary *did* contain.
+
+`{ISSUE_DIR}/NNNN.md` on disk is the record. Re-read it. It contradicts anything the
+summary got wrong.
+
+## Build and verification commands
+
+```sh
+# {the verification command — the one the issue's criterion names}
+
+# {the build command, and a note that it does NOT build tests, if true}
+```

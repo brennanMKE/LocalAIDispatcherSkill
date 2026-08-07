@@ -1,0 +1,90 @@
+# .dispatch.conf — per-project configuration for the local-ai-dispatcher scripts.
+#
+# Copy to the repo root as `.dispatch.conf` and edit. Every script here sources it
+# from the repo root if present and falls back to these defaults if not.
+#
+# It is plain zsh, so anything valid in a shell assignment is valid here. Keep it
+# tracked in git: the guards are only meaningful if everyone dispatches with the
+# same numbers.
+
+# --- Where the work is described ------------------------------------------------
+
+# Directory of NNNN.md task files.
+ISSUE_DIR=issues
+
+# Where a round's log and harness-run verification output are written.
+# ADD THIS TO .gitignore. A round log is an artifact, not a deliverable.
+RUN_LOG_DIR=.dispatch-runs
+
+# --- How a round is bounded -----------------------------------------------------
+
+# Hard wall-clock kill for one round, seconds. macOS has no `timeout` binary, so
+# the dispatch script runs its own watchdog. 1800 is the measured sweet spot: every
+# round that hit it was writing a large new file, which is a sizing problem.
+TIMEOUT=1800
+
+# Kill a round whose log has not grown for this long. A working round appends
+# constantly; silence this long is a hung inference request, not a slow round.
+# This has fired and saved 18 minutes on its first real firing.
+STALL=420
+
+# Rounds before the harness refuses and escalates. Three failed rounds is
+# information about the ISSUE, not about the model.
+MAX_ROUNDS=3
+
+# --- Which model implements -----------------------------------------------------
+
+# OpenAI-compatible endpoint for the local server (LM Studio default shown).
+LOCAL_ENDPOINT=http://127.0.0.1:1234/v1
+
+# How many rounds the local server will genuinely run at once. LM Studio's
+# PARALLEL setting is SILENT: an extra dispatch queues rather than running and is
+# indistinguishable from a very slow round. Check with `lms ps`.
+LOCAL_PARALLEL=2
+
+# The billed fallback, for work the local model fails at structurally — build
+# manifests, IDE project files, build settings, the harness itself.
+HOSTED_MODEL=anthropic/claude-sonnet-5
+
+# --- How a round is verified ----------------------------------------------------
+
+# The command the HARNESS runs after every round, independent of anything the
+# model claims. Two rounds have closed by asserting a passing count they never
+# measured; this puts the claim and the fact in the same artifact.
+VERIFY_CMD='swift test'
+
+# Directory to run VERIFY_CMD in, relative to the repo root. Use '.' for the root.
+VERIFY_DIR='.'
+
+# Extended regex for the line that proves the suite actually ran. Its ABSENCE is a
+# finding, not an ambiguity — treat an empty grep as "the suite did not build".
+VERIFY_LINE_RE='Test run with [0-9]+ tests'
+
+# Seconds before the harness gives up on VERIFY_CMD itself. A test that captures
+# its own stdout blocks forever; this bounds it.
+VERIFY_TIMEOUT=300
+
+# --- Preflight tuning -----------------------------------------------------------
+
+# Extended regex matching source paths that CANNOT hold a tested unit in this
+# project — an executable target, a generated directory, a resource bundle. A
+# named path is a claim about the build system and it can be wrong.
+# Leave empty to disable the check.
+UNTESTABLE_PATH_RE=''
+
+# Alternation of source-file extensions, used to check the issue names at least
+# one file to create or edit. Tune to the project's languages. Documentation
+# extensions belong OUT of this list — a docs path is not a source path.
+SOURCE_EXTS='swift|ts|tsx|js|jsx|py|go|rs|kt|java|rb|c|h|cpp|hpp|cc|m|mm'
+
+# Where the current baseline test count is recorded, so preflight can catch a
+# stale number in an issue. A stale baseline hides a small increase, which is
+# exactly what the criterion exists to catch. Leave empty to disable.
+BASELINE_FILE='docs/test-baseline.txt'
+
+# --- Scratch space --------------------------------------------------------------
+
+# Where the implementer must put throwaway files. The sandbox auto-rejects /tmp,
+# /var/tmp and $TMPDIR, and that rejection is TERMINAL — the run ends there. This
+# must be inside the worktree and in .gitignore.
+SCRATCH_DIR=build
