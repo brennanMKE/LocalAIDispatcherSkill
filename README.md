@@ -1,4 +1,4 @@
-# LocalAIDispatcher
+# LocalAIDispatcherSkill
 
 A [Claude Code](https://claude.com/claude-code) skill for **delegating implementation
 work to a local model** — cutting token cost and reliance on cloud providers — while
@@ -50,14 +50,14 @@ cluster hard, and the clusters *are* the operating rules:
 ### Quick install — `npx skills`
 
 ```bash
-npx skills add brennanMKE/LocalAIDispatcher --skill local-ai-dispatcher
+npx skills add brennanMKE/LocalAIDispatcherSkill --skill local-ai-dispatcher
 ```
 
 Target specific tools, or run non-interactively:
 
 ```bash
-npx skills add brennanMKE/LocalAIDispatcher --skill local-ai-dispatcher -a claude-code -a codex
-npx skills add brennanMKE/LocalAIDispatcher --skill local-ai-dispatcher -a claude-code -g -y
+npx skills add brennanMKE/LocalAIDispatcherSkill --skill local-ai-dispatcher -a claude-code -a codex
+npx skills add brennanMKE/LocalAIDispatcherSkill --skill local-ai-dispatcher -a claude-code -g -y
 ```
 
 > **Claude Code note:** if the skill installs but Claude Code doesn't see it, it
@@ -69,8 +69,8 @@ npx skills add brennanMKE/LocalAIDispatcher --skill local-ai-dispatcher -a claud
 ### Manual install — `install.sh`
 
 ```bash
-git clone https://github.com/brennanMKE/LocalAIDispatcher.git
-cd LocalAIDispatcher
+git clone https://github.com/brennanMKE/LocalAIDispatcherSkill.git
+cd LocalAIDispatcherSkill
 ./install.sh
 ```
 
@@ -83,7 +83,7 @@ Cursor has no global skills directory, so install it per project:
 Install straight from git without a manual clone (caches and updates on re-run):
 
 ```bash
-REPO_URL=https://github.com/brennanMKE/LocalAIDispatcher.git ./install.sh
+REPO_URL=https://github.com/brennanMKE/LocalAIDispatcherSkill.git ./install.sh
 ```
 
 `install.sh` uses symlinks, so edits to the skill files are picked up without
@@ -138,7 +138,7 @@ invisible to the delegate with no error at all.
 ## Project layout
 
 ```
-LocalAIDispatcher/
+LocalAIDispatcherSkill/
 ├── install.sh                          # symlinks the skill into each tool's skills dir
 ├── LICENSE                             # MIT
 ├── README.md                           # this file
