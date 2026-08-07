@@ -54,7 +54,7 @@ QUERY="
 SELECT
   CASE
     WHEN directory LIKE '%${PREFIX}-%'
-      THEN substr(directory, instr(directory, '${PREFIX}-') + ${#PREFIX} + 1, 4)
+      THEN substr(directory, instr(directory, '${PREFIX}-') + ${#PREFIX} + 1)
     ELSE '(main)'
   END AS issue,
   SUM(tokens_input),
@@ -79,6 +79,10 @@ fi
 typeset -i ti=0 to=0 ts=0
 while IFS='|' read -r issue tin tout sess; do
   [[ -n "$issue" ]] || continue
+  # The worktree name is the LAST path component, but a session started in a
+  # subdirectory carries more after it. Keep only the id. Taking a fixed 4
+  # characters here instead would silently truncate any non-NNNN task id.
+  issue=${issue%%/*}
   ti+=$tin; to+=$tout; ts+=$sess
   total=$(( tin + tout ))
   cost=$(printf "%.2f" $(( tin / 1000000.0 * IN_RATE + tout / 1000000.0 * OUT_RATE )))

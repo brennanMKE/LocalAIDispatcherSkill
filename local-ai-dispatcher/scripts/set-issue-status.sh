@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 #
-# set-issue-status.sh NNNN <status>
+# set-issue-status.sh <task-id> <status>
 #
 # Sets an issue's Status row to one of the five valid values, and refuses anything
 # else. The tracker is what a human reads to know the state of the work, so an
@@ -36,11 +36,11 @@ STATUS="${2:-}"
 VALID=(open in-progress resolved closed wontfix)
 
 if [[ -z "$ISSUE" || -z "$STATUS" ]]; then
-  print -u2 "usage: set-issue-status.sh NNNN <${(j:|:)VALID}>"
+  print -u2 "usage: set-issue-status.sh <task-id> <${(j:|:)VALID}>"
   exit 1
 fi
 
-FILE="$ISSUE_DIR/$ISSUE.md"
+FILE=$(task_file "$ISSUE")
 [[ -f "$FILE" ]] || { print -u2 "set-issue-status: $FILE does not exist"; exit 1 }
 
 if [[ ${VALID[(Ie)$STATUS]} -eq 0 ]]; then
@@ -58,12 +58,13 @@ them separate is the entire reason there are two states."
   exit 1
 fi
 
-grep -q '^| \*\*Status\*\*' "$FILE" || {
-  print -u2 "set-issue-status: $FILE has no '| **Status** |' row"; exit 1
-}
+if ! set_task_status "$FILE" "$STATUS"; then
+  print -u2 "set-issue-status: $FILE carries no status field for TASK_STYLE=$TASK_STYLE.
+Either add one, set TASK_STYLE in .dispatch.conf (table | frontmatter | none),
+or track status however you already do — nothing else in this harness depends on
+this script. Preflight simply skips the claim check when TASK_STYLE=none."
+  exit 1
+fi
 
-sed -i '' -E "s/^(\| \*\*Status\*\* \| ).*(\|)$/\1$STATUS \2/" "$FILE" 2>/dev/null \
-  || sed -i -E "s/^(\| \*\*Status\*\* \| ).*(\|)$/\1$STATUS \2/" "$FILE"
-
-print "set-issue-status: #$ISSUE -> $STATUS"
-grep -m1 '^| \*\*Status\*\*' "$FILE"
+print "set-issue-status: $ISSUE -> $STATUS"
+print -r -- "  now: $(task_status "$FILE")"

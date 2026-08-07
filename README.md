@@ -4,6 +4,21 @@ A [Claude Code](https://claude.com/claude-code) skill for **delegating implement
 work to a local model** — cutting token cost and reliance on cloud providers — while
 authoring and review stay on a hosted model.
 
+## Why
+
+Three reasons, and the middle one is the one people miss:
+
+1. **Cost.** Implementation is the bulk of the tokens and the part that benefits
+   least from a frontier model once the thinking is already done.
+2. **Subscription headroom.** In an agentic loop, input outweighs output by roughly
+   **100 to 1** — every turn resends the accumulated context, so a long round
+   re-reads its own transcript hundreds of times. That is exactly the traffic that
+   burns a usage window fastest and exactly the traffic with the least judgment in
+   it. Moving it to local hardware spends the subscription on authoring and review,
+   where judgment actually pays.
+3. **Independence.** Local inference keeps working offline, air-gapped, during an
+   outage, and without sending the repository anywhere.
+
 ## Overview
 
 The split is the idea:
@@ -128,6 +143,13 @@ cp ~/.claude/skills/local-ai-dispatcher/assets/AGENTS.md.template     your-proje
 cd your-project && ./scripts/setup-check.sh
 ```
 
+**You do not need a particular issue tracker.** The scripts want one file per task
+at a path they can compute from an id, and optionally a status field. The defaults
+match [IssuesSkill](https://github.com/brennanMKE/IssuesSkill) because it pairs
+well, but `TASK_STYLE` also handles YAML frontmatter or no metadata at all, and
+`TASK_DIR` / `TASK_ID_RE` accept slugs, ticket keys, or whatever folder of specs
+you already keep. See `references/task-tracking.md`.
+
 `setup-check.sh` turns the start-of-project checklist into a command. Every item in
 it corresponds to something that failed **silently** on a real project: the output
 cap that truncates a tool call mid-write, the parallel limit that queues a dispatch
@@ -143,19 +165,21 @@ LocalAIDispatcherSkill/
 ├── LICENSE                             # MIT
 ├── README.md                           # this file
 └── local-ai-dispatcher/                # the skill itself
-    ├── SKILL.md                        # the loop, the rules, the economics
+    ├── SKILL.md                        # routing table, the loop, the rules, the economics
     ├── references/                     # loaded on demand
     │   ├── setup.md                    # standing the harness up; the silent ceilings
+    │   ├── task-tracking.md            # bring your own tracker — this one is pluggable
     │   ├── model-routing.md            # what goes local, what stays hosted, measured
+    │   ├── worked-example.md           # one task written twice: prose vs code level
     │   ├── issue-authoring.md          # the Givens rule, sizing, probing before writing
     │   ├── preflight-checklist.md      # run before EVERY dispatch, mechanical + judgment
     │   ├── dispatch-loop.md            # worktrees, rounds, the dispatcher subagent, merging
     │   ├── review.md                   # mutation tables, inert-test shapes, reviewer traps
     │   ├── failure-modes.md            # the five classes, with the rounds each cost
-    │   ├── cost-accounting.md          # per-phase cost, what is measurable, what is not
+    │   ├── cost-accounting.md          # per-phase cost, subscription headroom, what is measurable
     │   └── unattended-operation.md     # heartbeats, and why a turn ends
     ├── scripts/                        # copied into the target project
-    │   ├── _common.sh                  # config loading, shared by all of them
+    │   ├── _common.sh                  # config + pluggable task-file access; all others source it
     │   ├── setup-check.sh              # verify the environment before the first dispatch
     │   ├── preflight-issue.sh          # refuse a known-defective issue, for free
     │   ├── dispatch-issue.sh           # one round, under two watchdogs
@@ -163,7 +187,8 @@ LocalAIDispatcherSkill/
     │   ├── set-issue-status.sh         # status moves; refuses `closed`
     │   └── tally-local-tokens.sh       # per-issue local volume, from OpenCode's SQLite
     └── assets/                         # templates
-        ├── AGENTS.md.template          # rules in the file the implementer actually reads
+        ├── AGENTS.md.template          # rules in the file the implementer actually reads;
+        │                               #   opens with a ~40-line minimum-viable version
         ├── dispatch.conf.template      # per-project config for every script
         ├── issue-template.md           # Givens, mutations, and a baseline count
         └── cost-ledger-template.md     # where a figure goes the turn it is measured

@@ -5,7 +5,11 @@ the implementer has not. Every type the work must touch is a place where "obviou
 diverges between them — and the model's guess will be idiomatic, plausible, and
 wrong.
 
-An issue is ready when an implementer could follow it **without a judgement call**.
+A task is ready when an implementer could follow it **without a judgement call**.
+
+**Read `worked-example.md` first if you have not.** It shows one real task written
+both ways — prose and code level — with what each version cost. Everything below
+is the general form of that one comparison.
 
 ## The standard, in five rules
 
@@ -191,4 +195,5 @@ outright.
 
 ## Template
 
-`assets/issue-template.md`.
+`assets/issue-template.md`, and `worked-example.md` for the same task written
+badly and then well.

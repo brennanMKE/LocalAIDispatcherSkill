@@ -1,6 +1,18 @@
 # Failure modes — the classes, so a failure gets filed rather than re-derived
 
-Five classes. Most failures are `spec-defect`, which is to say **most failed rounds
+**Contents**
+
+- [The five classes](#the-classes) — start here; find the class, don't re-diagnose
+- [`spec-defect`](#spec-defect) — unbuildable path · reasoned Givens · unsatisfiable criterion · absent branch dependency · a deletion with two jobs
+- [`environment`](#environment) — sandbox scratch rejection · mistyped absolute path · hung inference · output-cap truncation · silent parallel limit · foreground tool limit
+- [`model-behaviour`](#model-behaviour) — claims success unobserved · empty grep read as inconclusive · ends with a question · ignores negatives · surveys instead of editing · subagent hang · compaction fabricates history · criteria-shaped code · scope violation
+- [`review-defect`](#review-defect) — feedback that blocks the next round · stale feedback · instance not class · wrong feedback · overwritten task file
+- [`sizing`](#sizing) — multi-deliverable tasks, and greenfield vs repair
+- [The meta-lesson](#the-meta-lesson) — why writing the rule down did not work
+
+## The classes
+
+Five of them. Most failures are `spec-defect`, which is to say **most failed rounds
 are the author's fault, not the model's**, and the fix belongs upstream of the
 dispatch.
 

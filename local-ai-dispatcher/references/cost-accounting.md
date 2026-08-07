@@ -98,6 +98,37 @@ a long round re-reads its own transcript hundreds of times. **It is the stronges
 argument for running the implementer locally** — on a hosted model that ratio *is*
 the bill. Priced at mid-tier hosted rates, that traffic would have been ~$428.
 
+## If you are on a subscription rather than an API key
+
+The dollar figure is then the wrong frame, and the right one is **usage headroom**.
+
+A subscription meters against a rolling window. The 100:1 input ratio above means
+implementation rounds consume that window faster than anything else you do — a
+30-minute round re-sends its whole context on every turn, and in the reference
+project one round burned 438,301 input tokens for a context that never exceeded
+49k, because nothing was being cached.
+
+Three consequences worth stating to anyone weighing this up:
+
+- **Implementation is the worst possible use of a metered window.** It is the
+  highest-volume phase and the one with the least judgment in it, *once the task
+  has already been authored properly*. Authoring and review are low-volume and
+  high-judgment — exactly what a frontier model should be spending its quota on.
+- **Moving implementation local converts a hard limit into a soft one.** Local
+  inference is bounded by wall clock, not by quota. You trade "throttled by noon"
+  for "each round takes 8–30 minutes", and rounds can run while you do something
+  else.
+- **The rounds that fail cost the same as the rounds that succeed.** Well over
+  half the local volume in the reference project went on rejected or abandoned
+  rounds. On a subscription that would have been over half your window spent on
+  work that was thrown away — which is the strongest argument in this whole skill
+  for the preflight refusing a defective task before a round is spent on it.
+
+What still consumes the subscription: authoring, review, and every dispatcher
+subagent. That last one is not small — measured at ~40–70k tokens per dispatch —
+so a session that dispatches twenty rounds spends real quota on the supervision
+layer even though the implementation itself is free. Budget for it.
+
 **The most expensive rounds are the ones that failed.** Well over half the total
 volume went on rounds that were rejected or abandoned. That is the cost of authoring
 defects, and it is invisible in the dollar column **precisely because it is free**.

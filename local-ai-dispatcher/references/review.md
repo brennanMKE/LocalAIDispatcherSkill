@@ -3,6 +3,16 @@
 **Every rejected round in the reference project had a green suite.** That sentence
 is the whole reason this file is long.
 
+**Contents**
+
+- [Order of operations](#order-of-operations) — the six steps, in order
+- [Re-run it; do not read it](#1-2-re-run-it-do-not-read-it) — fluency reads as correctness
+- [Mutation is the only reliable verification](#3-mutation-is-the-only-reliable-verification) — the seven costumes; which test killed it; clean builds
+- [Read the body, not the name](#4-read-the-body-not-the-name) — the inert-test shapes to grep for
+- [Scope](#5-scope) · [Capture every stream](#6-capture-every-stream)
+- [Traps that live in the reviewer](#traps-that-live-in-the-reviewer-not-the-round) — contaminated probes, partial coverage, compiling ≠ launching, privileged test harnesses, prose
+- [When a review fails, the fix goes upstream](#when-a-review-fails-the-fix-goes-upstream)
+
 ## Order of operations
 
 1. **Read the harness's own verification output**, not the model's summary of it.

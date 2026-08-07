@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 #
-# preflight-issue.sh NNNN [--quiet]
+# preflight-issue.sh <task-id> [--quiet]
 #
 # Checks an issue against the mechanical authoring defects that have each already
 # cost a round. Run it while AUTHORING, when there is still time to fix the issue
@@ -38,9 +38,9 @@ while (( $# )); do
   esac
 done
 
-[[ -n "$ISSUE" ]] || { print -u2 "usage: preflight-issue.sh NNNN [--quiet]"; exit 1 }
-FILE="$ISSUE_DIR/$ISSUE.md"
-[[ -f "$FILE" ]] || { print -u2 "preflight: $FILE does not exist"; exit 1 }
+[[ -n "$ISSUE" ]] || { print -u2 "usage: preflight-issue.sh <task-id> [--quiet]"; exit 1 }
+FILE=$(task_file "$ISSUE")
+[[ -f "$FILE" ]] || { print -u2 "preflight: $FILE does not exist (TASK_DIR=$TASK_DIR, TASK_EXT=$TASK_EXT)"; exit 1 }
 
 # Checks run against the SPEC only — everything above the first `## Review`,
 # `## Work log`, or `## Sequencing` heading. Those sections narrate what went
@@ -51,14 +51,18 @@ SPEC=$(mktemp -t preflight-spec)
 trap 'rm -f "$SPEC"' EXIT
 awk '/^## (Review|Work log|Sequencing)/{exit} {print}' "$FILE" > "$SPEC"
 
-# A code issue must meet stricter checks than a docs or decision issue, which
-# legitimately names no source file and runs no test suite. The Module row is how
-# the issue declares which it is.
-MODULE_RAW=$(grep -m1 '^| \*\*Module\*\*' "$FILE" \
-  | sed 's/^| \*\*Module\*\* | *//; s/ *|$//' || true)
-IS_CODE=1
+# A code task must meet stricter checks than a docs or decision task, which
+# legitimately names no source file and runs no test suite. If the task format
+# carries a module/type field, use it; otherwise fall back to CODE_TASK_DEFAULT.
+#
+# The fallback defaults to STRICT on purpose. Guessing "docs" skips the hard
+# verification check, and an issue reading as clean while the check that matters
+# most never ran is exactly how seven defective tasks got queued.
+MODULE_RAW=$(task_module "$FILE")
+IS_CODE=$CODE_TASK_DEFAULT
 case "${MODULE_RAW:l}" in
   *doc*|*decision*|*research*|*spike*) IS_CODE=0 ;;
+  ?*) IS_CODE=1 ;;
 esac
 
 FAILED=0
@@ -69,30 +73,43 @@ fail() { print -u2 "  FAIL  $1"; print -u2 "        $2"; FAILED=1 }
 
 say "preflight $FILE  (module: ${MODULE_RAW:-none}, code: $IS_CODE)"
 
-# --- Check 1 (HARD) — the Module field must not be empty ---------------------
-# An empty Module made this script classify an issue as non-code, which SKIPPED
-# the hard verification check. Seven issues sat that way, each reading as clean
-# while the check that matters most was never run.
-if [[ -z "${MODULE_RAW// /}" ]]; then
-  fail "the Module field is empty" \
-"An empty Module classifies this as a non-code issue and SKIPS the verification
-check. Fill it in."
+# --- Check 1 — the module/type field, when the format has one ----------------
+# An empty module field made this script classify a task as non-code, which
+# SKIPPED the hard verification check. Seven tasks sat that way, each reading as
+# clean while the check that matters most was never run.
+#
+# Only enforced when the format actually carries the field. With TASK_STYLE=none
+# there is nothing to fill in and CODE_TASK_DEFAULT decides instead.
+if [[ "$TASK_STYLE" == none ]]; then
+  pass "no module field in this format; treating as code=$IS_CODE (CODE_TASK_DEFAULT)"
+elif [[ -z "${MODULE_RAW// /}" ]]; then
+  fail "the module field is empty" \
+"An empty module classifies this as a non-code task and SKIPS the verification
+check. Fill it in, or set TASK_STYLE=none if your format has no such field."
 else
-  pass "Module is set ($MODULE_RAW)"
+  pass "module is set ($MODULE_RAW)"
 fi
 
-# --- Check 2 (HARD) — the issue must be claimed before work starts -----------
-# The tracker is what a human reads to know what is being worked on. Issues were
-# going straight from open to resolved, so an actively running dispatch showed as
+# --- Check 2 — the task must be claimed before work starts -------------------
+# The tracker is what a human reads to know what is being worked on. Tasks were
+# going straight from open to done, so an actively running dispatch showed as
 # untouched. Gate it rather than trusting anyone to remember.
-STATUS=$(grep -m1 '^| \*\*Status\*\*' "$FILE" | awk -F'|' '{gsub(/ /,"",$3); print $3}' || true)
-if [[ "$STATUS" == "in-progress" ]]; then
-  pass "issue is claimed (in-progress)"
+#
+# Skipped entirely when the format carries no status. That is a supported setup,
+# not a defect — but you lose the signal that says which task is live, so
+# something else has to carry it.
+if [[ "$TASK_STYLE" == none ]]; then
+  pass "no status field in this format; claim check skipped"
 else
-  fail "issue status is '$STATUS', not 'in-progress'" \
+  STATUS=$(task_status "$FILE")
+  if [[ "$STATUS" == "in-progress" ]]; then
+    pass "task is claimed (in-progress)"
+  else
+    fail "task status is '$STATUS', not 'in-progress'" \
 "Claim it before dispatching:  ./scripts/set-issue-status.sh $ISSUE in-progress
-Set it back to 'open' if the round is abandoned — an issue stuck at in-progress
+Set it back to 'open' if the round is abandoned — a task stuck at in-progress
 with nothing running reads as claimed and nobody picks it up."
+  fi
 fi
 
 # --- Check 3 (HARD) — scratch paths outside the worktree ---------------------

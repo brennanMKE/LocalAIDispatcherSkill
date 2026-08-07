@@ -8,9 +8,44 @@
 # same numbers.
 
 # --- Where the work is described ------------------------------------------------
+#
+# THE TASK TRACKER IS PLUGGABLE. These scripts need exactly two things from
+# whatever you use to break work down:
+#
+#   1. one file per task, at a path they can compute from a task id
+#   2. optionally, a status field they can read and write
+#
+# Numbering, folder name, extra metadata, and how you file things are yours. The
+# defaults match the `issues` skill (issues/0042.md with a `| **Status** |` row)
+# because it is a common setup and pairs well with this one — not because
+# anything here requires it.
 
-# Directory of NNNN.md task files.
-ISSUE_DIR=issues
+# Directory of task files, and the extension they carry.
+TASK_DIR=issues
+TASK_EXT=.md
+
+# Extended regex a task id must match. Widen it if your tasks are not numbered:
+#   '^[0-9]{4}$'        0042.md              (the default)
+#   '^[A-Z]+-[0-9]+$'   PROJ-118.md          (Jira-style keys)
+#   '^[a-z0-9-]+$'      auth-refactor.md     (slugs)
+TASK_ID_RE='^[0-9]{4}$'
+
+# How status and module/type are stored in a task file:
+#   table        `| **Status** | open |` rows        (the `issues` skill)
+#   frontmatter  YAML `status: open` between --- fences
+#   none         no status field; the claim check is skipped
+#
+# If your format is none of these, redefine task_status / set_task_status /
+# task_module at the bottom of this file — .dispatch.conf is sourced after the
+# defaults, so a redefinition here wins.
+TASK_STYLE=table
+
+# When the format carries no module/type field, is a task assumed to be code?
+# 1 applies the strict checks (a source file and a gradeable verification command
+# must be named). Defaults to strict because guessing "docs" SKIPS the check that
+# matters most, and a task reading as clean while that check never ran is exactly
+# how seven defective tasks got queued.
+CODE_TASK_DEFAULT=1
 
 # Where a round's log and harness-run verification output are written.
 # ADD THIS TO .gitignore. A round log is an artifact, not a deliverable.

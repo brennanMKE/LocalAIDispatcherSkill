@@ -16,6 +16,55 @@ reads. If it says `UNKNOWN`, the file is not reaching the system prompt.
 ---
 
 <!-- ============================================================
+     START HERE. The block below is the MINIMUM VIABLE AGENTS.md —
+     it is ~40 lines, has no placeholders to fill in except the two
+     marked, and covers the failures that have actually cost rounds.
+
+     Copy it in, fill the two {…} fields, and ship. The long
+     catalogue further down is opt-in: add a rule from it when you
+     hit the failure it describes, not before. A rule the reader has
+     no context for is a rule they skim.
+
+     Do NOT ship a file that still contains {placeholders} — a round
+     told to consult "{name the framework}" will invent one.
+     ============================================================ -->
+
+## The short version — the rules that have each cost a round
+
+1. **Implement only this task.** Do not run `git commit`, `push`, `add`, `switch`,
+   `checkout`, or `branch`. Leave changes in the working tree. Do not change the
+   task's status. Do not start another task.
+2. **Run `{VERIFY_CMD}` as your last action, always**, and paste its real output.
+   A run with no result line is a **failure**, not an ambiguity — an expected line
+   that is absent is the finding. Never claim a test passed without output showing
+   it ran.
+3. **Every scratch file goes in `{SCRATCH_DIR}/`, inside this worktree.** Writes to
+   `/tmp`, `/var/tmp` and `$TMPDIR` are auto-rejected, and that rejection is
+   terminal — the run ends there. Four rounds have died on it.
+4. **Every path you write is worktree-relative, never absolute.** Two rounds died
+   on one mistyped character in a long absolute path; the sandbox correctly read it
+   as outside the worktree and killed the run mid-edit.
+5. **If the same thing fails twice, change approach.** Do not retry a third time. If
+   the write tool fails twice on one file, use a shell heredoc. A ceiling is not
+   something a retry can clear — one round re-emitted the same failing call 188
+   times over 25 minutes and produced nothing.
+6. **A test that cannot fail is worse than no test.** Before you finish, re-read
+   each test you wrote and ask what production change would make it fail. If the
+   answer is "none", it is not done. No assertion-free tests, no assertions over
+   literals, no `if let x { assert }` without an else.
+7. **Never end a round with a question.** You run unattended; nobody reads the log
+   until after you have stopped. Do every unambiguous part, take the most literal
+   reading of the criteria, and state any assumption in one sentence at the end.
+8. **Read the files the task names, then start editing.** Do not survey the repo and
+   do not run the suite before you have written anything. If the task states a
+   measurement, do not re-measure it.
+9. **Do not spawn a subagent.** The task names every file and signature you need.
+
+Finish with: what you changed, what you ran, what it printed, what you could not do.
+
+---
+
+<!-- ============================================================
      PROJECT-SPECIFIC NON-NEGOTIABLES GO HERE, INLINED.
      Examples of what belongs here rather than in a linked doc:
        - licensing boundaries (which sibling repos may be copied from)
@@ -276,7 +325,7 @@ model worked from all of it, including re-importing a previous round's sandbox
 rejection as a live instruction. It also discarded the correct fix, which the
 summary *did* contain.
 
-`{ISSUE_DIR}/NNNN.md` on disk is the record. Re-read it. It contradicts anything the
+`{TASK_DIR}/<id>.md` on disk is the record. Re-read it. It contradicts anything the
 summary got wrong.
 
 ## Build and verification commands

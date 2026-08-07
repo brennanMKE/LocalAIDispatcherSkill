@@ -1,9 +1,9 @@
 #!/usr/bin/env zsh
 #
-# dispatch-issue.sh NNNN [--round N] [--model local|hosted] [--timeout S]
-#                        [--stall S] [--force]
+# dispatch-issue.sh <task-id> [--round N] [--model local|hosted] [--timeout S]
+#                             [--stall S] [--force]
 #
-# Runs ONE round of implementation on one issue, through OpenCode, in the current
+# Runs ONE round of implementation on one task, through OpenCode, in the current
 # worktree. The implementer implements: it does not commit, does not branch, and
 # does not set status. Review owns all three.
 #
@@ -61,10 +61,16 @@ done
 
 die() { print -u2 "dispatch: $1"; exit "${2:-1}" }
 
-[[ -n "$ISSUE" ]] || die "usage: dispatch-issue.sh NNNN [--round N] [--model local|hosted]" 2
-[[ "$ISSUE" =~ '^[0-9]{4}$' ]] || die "issue must be 4 digits, got '$ISSUE'" 2
-SPEC_FILE="$ISSUE_DIR/$ISSUE.md"
-[[ -f "$SPEC_FILE" ]] || die "$SPEC_FILE does not exist" 2
+[[ -n "$ISSUE" ]] || die "usage: dispatch-issue.sh <task-id> [--round N] [--model local|hosted]" 2
+[[ "$ISSUE" =~ "$TASK_ID_RE" ]] || die \
+"task id '$ISSUE' does not match TASK_ID_RE ($TASK_ID_RE).
+Set TASK_ID_RE in .dispatch.conf if your tasks are not numbered NNNN." 2
+[[ "$ISSUE" == */* ]] && die "task id must not contain '/'" 2
+SPEC_FILE=$(task_file "$ISSUE")
+[[ -f "$SPEC_FILE" ]] || die \
+"$SPEC_FILE does not exist.
+These scripts need one file per task, at \$TASK_DIR/<id>\$TASK_EXT. Point
+TASK_DIR and TASK_EXT at whatever you already use — the tracker is pluggable." 2
 
 # Every mechanical check derived from a past failed round lives in
 # preflight-issue.sh, and each one is there because a round was already lost to
